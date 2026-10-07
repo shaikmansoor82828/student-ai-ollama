@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="container">
+        <header class="hero">
+            <div>
+                <p class="eyebrow">LOCAL AI STUDY ASSISTANT</p>
+                <h1>Student AI</h1>
+                <p class="subtitle">Learn, understand, compare and revise with your own local AI.</p>
+            </div>
+            <div class="status">● Ollama + Gemma 3 1B</div>
+        </header>
+
+        <section class="features">
+            {% set modes = [
+                ("ask", "Ask AI", "Get clear answers to your questions."),
+                ("study", "Study Help", "Understand academic topics."),
+                ("simple", "Explain Simply", "Turn difficult ideas into easy language."),
+                ("notes", "Notes Helper", "Generate concise revision notes."),
+                ("mistake", "Mistake Explainer", "Understand and correct mistakes."),
+                ("compare", "Compare Concepts", "Compare two topics clearly.")
+            ] %}
+            {% for key, title, desc in modes %}
+            <button type="button"
+                    class="feature-card {% if mode == key %}active{% endif %}"
+                    onclick="setMode('{{ key }}', this)">
+                <strong>{{ title }}</strong>
+                <span>{{ desc }}</span>
+            </button>
+            {% endfor %}
+        </section>
+
+        <section class="panel">
+            <form method="POST" id="aiForm">
+                <input type="hidden" name="mode" id="mode" value="{{ mode }}">
+
+                <label for="question" id="questionLabel">What would you like to ask?</label>
+                <textarea id="question" name="question" rows="7"
+                          placeholder="Example: Explain machine learning in simple words...">{{ question }}</textarea>
+
+                <div class="examples">
+                    <span>Try:</span>
+                    <button type="button" onclick="useExample('Explain supervised learning with a simple example.')">Supervised learning</button>
+                    <button type="button" onclick="useExample('Create short notes about Python functions.')">Python functions</button>
+                    <button type="button" onclick="useExample('Compare AI and Machine Learning.')">AI vs ML</button>
+                </div>
+
+                <div class="actions">
+                    <button class="primary" id="submitButton" type="submit">Get AI Answer</button>
+                    <button class="secondary" type="button" onclick="clearForm()">Clear</button>
+                </div>
+            </form>
+        </section>
+
+        {% if answer %}
+        <section class="answer-panel">
+            <div class="answer-header">
+                <h2>AI Answer</h2>
+                <button type="button" class="copy-button" onclick="copyAnswer()">Copy</button>
+            </div>
+            <div id="answer" class="answer">{{ answer }}</div>
+        </section>
+        {% endif %}
+    </main>
+
+    <script>
+        const modeInfo = {
+            ask: "What would you like to ask?",
+            study: "What topic do you want to study?",
+            simple: "What topic should I explain simply?",
+            notes: "Which topic should I turn into notes?",
+            mistake: "Paste the answer or mistake you want explained.",
+            compare: "Enter two concepts to compare."
+        };
+
+        function setMode(selectedMode, button) {
+            document.getElementById("mode").value = selectedMode;
+            document.getElementById("questionLabel").textContent = modeInfo[selectedMode];
+
+            document.querySelectorAll(".feature-card").forEach(card => {
+                card.classList.remove("active");
+            });
+            button.classList.add("active");
+        }
+
+        function useExample(text) {
+            document.getElementById("question").value = text;
+            document.getElementById("question").focus();
+        }
+
+        function clearForm() {
+            document.getElementById("question").value = "";
+        }
+
+        function copyAnswer() {
+            const answer = document.getElementById("answer");
+            if (!answer) return;
+            navigator.clipboard.writeText(answer.innerText);
+        }
+
+        document.getElementById("aiForm").addEventListener("submit", function () {
+            const button = document.getElementById("submitButton");
+            button.textContent = "AI is thinking...";
+            button.disabled = true;
+        });
+    </script>
+</body>
+</html>
