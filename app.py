@@ -1,13 +1,17 @@
+import os
+
 from flask import Flask, render_template, request
 import ollama
 
 app = Flask(__name__)
-MODEL = "gemma3:1b"
+MODEL = os.getenv("OLLAMA_MODEL", "gemma3:1b")
+MAX_QUESTION_LENGTH = 4000
+
 
 def build_prompt(question, mode):
     prompts = {
         "ask": f"""You are an educational AI assistant.
-Answer the student's question clearly and accurately.
+Answer the student question clearly and accurately.
 Use simple English and give examples when useful.
 
 Student question:
@@ -38,7 +42,7 @@ Use simple English.
 Topic:
 {question}""",
         "mistake": f"""You are a Student AI Mistake Explainer.
-Analyze the student's answer and explain:
+Analyze the student answer and explain:
 1. What is wrong
 2. Why it is wrong
 3. The correct explanation
@@ -46,7 +50,7 @@ Analyze the student's answer and explain:
 
 Be encouraging and use simple English.
 
-Student's answer:
+Student answer:
 {question}""",
         "compare": f"""You are a Student AI Comparison Assistant.
 Compare the two academic concepts.
@@ -65,38 +69,47 @@ Concepts:
     }
     return prompts.get(mode, prompts["ask"])
 
+
 @app.route("/", methods=["GET", "POST"])
 def home():
     answer = ""
     question = ""
     mode = "ask"
+    error = ""
 
     if request.method == "POST":
         question = request.form.get("question", "").strip()
         mode = request.form.get("mode", "ask")
 
+        if mode not in {"ask", "study", "simple", "notes", "mistake", "compare"}:
+            mode = "ask"
+
         if not question:
-            answer = "Please enter a topic or question."
+            error = "Please enter a topic or question."
+        elif len(question) > MAX_QUESTION_LENGTH:
+            error = f"Please keep your input under {MAX_QUESTION_LENGTH} characters."
         else:
             try:
                 response = ollama.generate(
                     model=MODEL,
                     prompt=build_prompt(question, mode)
                 )
-                answer = response["response"].strip()
-            except Exception as error:
-                print("Ollama error:", error)
-                answer = (
-                    "Unable to connect to Ollama. Make sure Ollama is running "
-                    f"and that the '{MODEL}' model is installed."
-                )
+                answer = response.get("response", "").strip()
+                if not answer:
+                    error = "Ollama returned an empty response. Please try again."
+            except Exception as exc:
+                app.logger.error("Ollama error: %s", exc)
+                error = f"Unable to connect to Ollama. Make sure Ollama is running and the {MODEL} model is installed."
 
     return render_template(
         "index.html",
         question=question,
         answer=answer,
-        mode=mode
+        error=error,
+        mode=mode,
+        model=MODEL
     )
+
 
 if __name__ == "__main__":
     app.run(debug=True)
